@@ -1,0 +1,154 @@
+import os
+
+def scan_directory(directory):
+    return [os.path.join(root, file) for root, _, files in os.walk(directory) for file in files]
+def virtual_organize(files):
+    organized_structure = {}
+    for file_path in files:
+        file_ext = os.path.splitext(file_path)[1][1:]
+        if file_ext not in organized_structure:
+            organized_structure[file_ext] = []
+        organized_structure[file_ext].append(file_path)
+    return organized_structure
+import shutil
+
+def apply_structure(structure, destination):
+    for file_type, files in structure.items():
+        type_folder = os.path.join(destination, file_type)
+        if not os.path.exists(type_folder):
+            os.makedirs(type_folder)
+        for file_path in files:
+            shutil.move(file_path, os.path.join(type_folder, os.path.basename(file_path)))
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+def start_organization():
+    source = filedialog.askdirectory(title="Select Source Directory")
+    destination = filedialog.askdirectory(title="Select Destination Directory")
+    
+    files = scan_directory(source)
+    structure = virtual_organize(files)
+    apply_structure(structure, destination)
+    
+    messagebox.showinfo("Complete", "Organization complete!")
+
+root = tk.Tk()
+root.title("File Organizer")
+
+start_btn = tk.Button(root, text="Start Organization", command=start_organization)
+start_btn.pack(pady=20)
+
+root.mainloop()
+def virtual_organize(files):
+    organized_structure = {}
+    for file_path in files:
+        parent_folder = os.path.basename(os.path.dirname(file_path))
+        if parent_folder not in organized_structure:
+            organized_structure[parent_folder] = {}
+        
+        file_ext = os.path.splitext(file_path)[1][1:]
+        if file_ext not in organized_structure[parent_folder]:
+            organized_structure[parent_folder][file_ext] = []
+        
+        organized_structure[parent_folder][file_ext].append(file_path)
+    return organized_structure
+def categorize_based_on_content(file_path):
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        content = f.read().lower()
+    
+    if "invoice" in content:
+        return "Invoices"
+    elif "recipe" in content:
+        return "Recipes"
+    # ... add more as needed
+    else:
+        return "General"
+def user_preferences_interface():
+    global user_rules  # To store and access user preferences across functions
+    user_rules = {}
+
+    def add_preference():
+        keyword = keyword_entry.get()
+        folder = folder_entry.get()
+        if keyword and folder:
+            user_rules[keyword] = folder
+            keyword_entry.delete(0, tk.END)
+            folder_entry.delete(0, tk.END)
+
+    pref_popup = tk.Toplevel(root)
+    pref_popup.title("Set User Preferences")
+
+    keyword_label = tk.Label(pref_popup, text="Keyword:")
+    keyword_label.pack(pady=5)
+    keyword_entry = tk.Entry(pref_popup, width=30)
+    keyword_entry.pack(pady=5)
+
+    folder_label = tk.Label(pref_popup, text="Folder:")
+    folder_label.pack(pady=5)
+    folder_entry = tk.Entry(pref_popup, width=30)
+    folder_entry.pack(pady=5)
+
+    add_btn = tk.Button(pref_popup, text="Add", command=add_preference)
+    add_btn.pack(pady=10)
+
+    close_btn = tk.Button(pref_popup, text="Close", command=pref_popup.destroy)
+    close_btn.pack(pady=20)
+preferences_btn = tk.Button(root, text="Set Preferences", command=user_preferences_interface)
+preferences_btn.pack(pady=20)
+def virtual_organize(files):
+    organized_structure = {}
+    for file_path in files:
+        file_name = os.path.basename(file_path)
+        
+        category = "Other"
+        for keyword, folder in user_rules.items():
+            if keyword in file_name:
+                category = folder
+                break
+        
+        if category not in organized_structure:
+            organized_structure[category] = []
+        
+        organized_structure[category].append(file_path)
+    return organized_structure
+def safe_move(file_path, destination):
+    base_name = os.path.basename(file_path)
+    final_destination = os.path.join(destination, base_name)
+    
+    counter = 1
+    while os.path.exists(final_destination):
+        name, ext = os.path.splitext(base_name)
+        final_destination = os.path.join(destination, f"{name}_{counter}{ext}")
+        counter += 1
+    
+    shutil.move(file_path, final_destination)
+def safe_move(file_path, destination):
+    try:
+        base_name = os.path.basename(file_path)
+        final_destination = os.path.join(destination, base_name)
+        
+        counter = 1
+        while os.path.exists(final_destination):
+            name, ext = os.path.splitext(base_name)
+            final_destination = os.path.join(destination, f"{name}_{counter}{ext}")
+            counter += 1
+        
+        shutil.move(file_path, final_destination)
+    except PermissionError:
+        messagebox.showwarning("Permission Error", f"Permission denied when moving {file_path}.")
+def safe_move(file_path, destination):
+    try:
+        base_name = os.path.basename(file_path)
+        final_destination = os.path.join(destination, base_name)
+        
+        counter = 1
+        while os.path.exists(final_destination):
+            name, ext = os.path.splitext(base_name)
+            final_destination = os.path.join(destination, f"{name}_{counter}{ext}")
+            counter += 1
+        
+        shutil.move(file_path, final_destination)
+    except PermissionError:
+        messagebox.showwarning("Permission Error", f"Permission denied when moving {file_path}.")
+    except Exception as e:
+        messagebox.showwarning("Error", f"Error when moving {file_path}: {str(e)}")
