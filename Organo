@@ -20,7 +20,7 @@ def apply_structure(structure, destination):
         for file_path in files:
             shutil.move(file_path, os.path.join(type_folder, os.path.basename(file_path)))
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox,ttk, simpledialog, filedialog
 
 def start_organization():
     source = filedialog.askdirectory(title="Select Source Directory")
@@ -63,6 +63,19 @@ def categorize_based_on_content(file_path):
     # ... add more as needed
     else:
         return "General"
+def determine_category(file_path):
+    file_ext = os.path.splitext(file_path)[1][1:].lower()
+    
+    # Basic categorization based on file extension
+    if file_ext in ["doc", "docx", "txt", "pdf"]:
+        return categorize_based_on_content(file_path)
+    elif file_ext in ["jpg", "jpeg", "png"]:
+        return "Images"
+    elif file_ext in ["mp3", "wav"]:
+        return "Music"
+    # ... add more as needed
+    else:
+        return "Others"
 def user_preferences_interface():
     global user_rules  # To store and access user preferences across functions
     user_rules = {}
@@ -152,3 +165,283 @@ def safe_move(file_path, destination):
         messagebox.showwarning("Permission Error", f"Permission denied when moving {file_path}.")
     except Exception as e:
         messagebox.showwarning("Error", f"Error when moving {file_path}: {str(e)}")
+
+
+root = tk.Tk()
+root.title("AI-Enhanced File Organizer")
+
+# Make the window fullscreen
+root.attributes('-fullscreen', True)
+
+# Toggle fullscreen with F11
+def toggle_fullscreen(event=None):
+    root.attributes('-fullscreen', not root.attributes('-fullscreen'))
+    return "break"
+
+root.bind("<F11>", toggle_fullscreen)
+
+# Create a Notebook for tab progression
+notebook = ttk.Notebook(root)
+notebook.pack(fill=tk.BOTH, expand=True)
+
+# Scan directory and categorize files
+files = scan_directory("YOUR_DIRECTORY_PATH_HERE")  # Replace with your directory path
+categories = {}
+for file_path in files:
+    category = determine_category(file_path)
+    if category not in categories:
+        categories[category] = []
+    categories[category].append(file_path)
+
+# Create tabs and treeviews for each category
+for category, file_paths in categories.items():
+    frame = ttk.Frame(notebook)
+    notebook.add(frame, text=category)
+
+    tree = ttk.Treeview(frame)
+    tree.pack(fill=tk.BOTH, expand=True)
+
+    # Define columns
+    tree["columns"] = ("Path", "Type")
+    tree.column("#0", width=270, minwidth=270, stretch=tk.NO)
+    tree.column("Path", width=400, minwidth=200, stretch=tk.NO)
+    tree.column("Type", width=150, minwidth=150, stretch=tk.NO)
+
+    tree.heading("#0", text="Name", anchor=tk.W)
+    tree.heading("Path", text="Path", anchor=tk.W)
+    tree.heading("Type", text="Type", anchor=tk.W)
+
+    for file_path in file_paths:
+        tree.insert("", tk.END, text=os.path.basename(file_path), values=(file_path, os.path.splitext(file_path)[1][1:].upper()))
+
+root.mainloop()
+import tensorflow as tf
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+
+# Sample data (replace with your actual data)
+texts = ["content of file 1", "content of file 2", ...]  # File contents
+labels = [0, 1, ...]  # Corresponding labels (e.g., 0 for "Invoices", 1 for "Recipes")
+
+
+# Tokenize and pad sequences
+tokenizer = Tokenizer(num_words=10000, oov_token="<OOV>")
+tokenizer.fit_on_texts(texts)
+sequences = tokenizer.texts_to_sequences(texts)
+padded_sequences = pad_sequences(sequences, padding='post')
+model = tf.keras.Sequential([
+    tf.keras.layers.Embedding(10000, 16, input_length=padded_sequences.shape[1]),
+    tf.keras.layers.GlobalAveragePooling1D(),
+    tf.keras.layers.Dense(24, activation='relu'),
+    tf.keras.layers.Dense(2, activation='softmax')  # Assuming 2 categories; adjust as needed
+])
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.fit(padded_sequences, labels, epochs=10)
+def predict_category(file_content):
+    sequence = tokenizer.texts_to_sequences([file_content])
+    padded_sequence = pad_sequences(sequence, padding='post', maxlen=padded_sequences.shape[1])
+    prediction = model.predict(padded_sequence)
+    return int(tf.argmax(prediction, axis=1)[0])
+file_names = [
+    "Report.docx", "MeetingNotes.doc", "Thesis.pdf", "Proposal.txt",
+    "VacationPhoto.jpg", "Logo.png", "Portrait.tiff", "Drawing.bmp",
+    "Song.mp3", "AlbumTrack1.wav", "Recording.m4a", "Soundtrack.flac",
+    "Movie.mp4", "Presentation.avi", "Clip.mov", "Recording.webm",
+    "script.py", "main.c", "index.html", "app.js",
+    "data.csv", "report.xlsx", "database.sqlite", "dataset.json",
+    "backup.zip", "photos.tar.gz", "project.rar", "source.7z",
+    "setup.exe", "program.out", "utility.sh", "app.jar"
+]
+
+labels = [
+    "Documents", "Documents", "Documents", "Documents",
+    "Images", "Images", "Images", "Images",
+    "Music", "Music", "Music", "Music",
+    "Videos", "Videos", "Videos", "Videos",
+    "Code", "Code", "Code", "Code",
+    "Data", "Data", "Data", "Data",
+    "Archives", "Archives", "Archives", "Archives",
+    "Executables", "Executables", "Executables", "Executables"
+]
+# Tokenization
+tokenizer = Tokenizer(num_words=1000, oov_token="<OOV>")
+tokenizer.fit_on_texts(file_names)
+sequences = tokenizer.texts_to_sequences(file_names)
+padded_sequences = pad_sequences(sequences, padding='post')
+
+# Convert labels to integers
+label_tokenizer = Tokenizer()
+label_tokenizer.fit_on_texts(labels)
+label_seq = label_tokenizer.texts_to_sequences(labels)
+model = tf.keras.Sequential([
+    tf.keras.layers.Embedding(1000, 16, input_length=padded_sequences.shape[1]),
+    tf.keras.layers.GlobalAveragePooling1D(),
+    tf.keras.layers.Dense(8, activation='relu'),
+    tf.keras.layers.Dense(len(label_tokenizer.word_index) + 1, activation='softmax')
+])
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.fit(padded_sequences, label_seq, epochs=50)
+def predict_file_category(file_name):
+    sequence = tokenizer.texts_to_sequences([file_name])
+    padded_sequence = pad_sequences(sequence, padding='post', maxlen=padded_sequences.shape[1])
+    prediction = model.predict(padded_sequence)
+    label_index = int(tf.argmax(prediction, axis=1)[0])
+    for label, index in label_tokenizer.word_index.items():
+        if index == label_index:
+            return label
+    return "Unknown"
+def ensure_folder_exists(directory, folder_name):
+    folder_path = os.path.join(directory, folder_name)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    return folder_path
+def sort_files_by_date(files):
+    return sorted(files, key=lambda x: os.path.getmtime(x))
+def get_new_file_name(directory, original_name):
+    base_name, ext = os.path.splitext(original_name)
+    counter = 1
+    new_name = original_name
+    while os.path.exists(os.path.join(directory, new_name)):
+        new_name = f"{base_name}_{counter}{ext}"
+        counter += 1
+    return new_name
+import shutil
+
+def organize_files(files, target_directory):
+    # Sort files by date
+    sorted_files = sort_files_by_date(files)
+
+    for file_path in sorted_files:
+        # Predict the category
+        category = predict_file_category(os.path.basename(file_path))
+        
+        # Ensure the folder exists
+        category_folder = ensure_folder_exists(target_directory, category)
+        
+        # Get a new file name
+        new_file_name = get_new_file_name(category_folder, os.path.basename(file_path))
+        
+        # Move the file
+        shutil.move(file_path, os.path.join(category_folder, new_file_name))
+
+# ... [Previous functions like ensure_folder_exists, sort_files_by_date, get_new_file_name]
+
+def display_predicted_organization(files, target_directory):
+    # Clear existing items in the treeview
+    for item in tree.get_children():
+        tree.delete(item)
+
+    # Sort files by date
+    sorted_files = sort_files_by_date(files)
+
+    for file_path in sorted_files:
+        # Predict the category
+        category = predict_file_category(os.path.basename(file_path))
+        
+        # Check if category exists in treeview
+        category_id = None
+        for item in tree.get_children():
+            if tree.item(item, "text") == category:
+                category_id = item
+                break
+        
+        # If not, create it
+        if not category_id:
+            category_id = tree.insert("", tk.END, text=category)
+        
+        # Insert the file under the category
+        tree.insert(category_id, tk.END, text=os.path.basename(file_path), values=(file_path,))
+
+def apply_changes(target_directory):
+    for category in tree.get_children():
+        category_name = tree.item(category, "text")
+        category_folder = ensure_folder_exists(target_directory, category_name)
+        
+        for file_item in tree.get_children(category):
+            file_name = tree.item(file_item, "text")
+            file_path = tree.item(file_item, "values")[0]
+            
+            new_file_name = get_new_file_name(category_folder, file_name)
+            shutil.move(file_path, os.path.join(category_folder, new_file_name))
+    
+    messagebox.showinfo("Success", "Files have been organized!")
+
+root = tk.Tk()
+root.title("AI-Enhanced File Organizer")
+
+# ... [GUI setup code]
+
+# Add a button to display predicted organization
+btn_organize = ttk.Button(root, text="Organize", command=lambda: display_predicted_organization(files, "YOUR_TARGET_DIRECTORY"))
+btn_organize.pack(pady=20)
+
+# Add a button to apply changes
+btn_apply = ttk.Button(root, text="Apply Changes", command=apply_changes)
+btn_apply.pack(pady=20)
+
+root.mainloop()
+# This list will store the original and new paths of each file
+movements = []
+
+# Before moving a file:
+original_path = "path/to/original/file.txt"
+new_path = "path/to/new/location/file.txt"
+movements.append((original_path, new_path))
+def populate_treeview(tree, directory, parent=''):
+    """Populate the Treeview with the folder and file structure."""
+    for item in os.listdir(directory):
+        path = os.path.join(directory, item)
+        id = tree.insert(parent, 'end', text=item)
+        if os.path.isdir(path):
+            populate_treeview(tree, path, id)
+def pick_source():
+    """Pick a source directory and display its structure."""
+    directory = filedialog.askdirectory()
+    if directory:
+        populate_treeview(tree, directory)
+
+def pick_destination():
+    """Pick a destination and display its structure in the Treeview."""
+    directory = filedialog.askdirectory()
+    if directory:
+        # Clear the Treeview
+        for item in tree.get_children():
+            tree.delete(item)
+        
+        # Populate the Treeview with the directory structure
+        populate_treeview(tree, directory)
+
+root = tk.Tk()
+root.title("File Organizer")
+# Set up the style
+style = ttk.Style(root)
+
+# Customize the Treeview appearance
+style.configure("Treeview",
+                background="#E1E1E1",
+                foreground="black",
+                rowheight=25,
+                fieldbackground="#E1E1E1")
+style.configure("Treeview.Heading",
+                background="#B0B0B0",
+                foreground="black",
+                font=("Arial", 10, "bold"))
+
+# Button to pick source directory
+btn_pick = ttk.Button(root, text="Pick Source", command=pick_source)
+btn_pick.pack(pady=20)
+
+# Treeview to display the structure
+tree = ttk.Treeview(root)
+tree.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+# Button to pick destination
+btn_pick = ttk.Button(root, text="Pick Destination", command=pick_destination)
+btn_pick.pack(pady=20)
+
+# Treeview to display the structure
+tree = ttk.Treeview(root)
+tree.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+
+root.mainloop()
